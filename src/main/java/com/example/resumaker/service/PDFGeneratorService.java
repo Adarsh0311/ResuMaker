@@ -1,8 +1,10 @@
 package com.example.resumaker.service;
-import com.example.resumaker.model.Education;
 import com.example.resumaker.DTO.ResumeRequest;
+import com.example.resumaker.model.Education;
 import com.example.resumaker.model.WorkExperience;
 import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.tool.xml.ElementList;
 import com.itextpdf.tool.xml.XMLWorkerHelper;
@@ -18,8 +20,10 @@ import java.util.Map;
 @Service
 public class PDFGeneratorService {
     public static final String HR = "<hr> </hr>";
-    Font boldFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
-    Font boldUnderlineFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD | Font.UNDERLINE);
+    Font boldFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD);
+    Font boldUnderlineFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD | Font.UNDERLINE);
+    Font basicFont = new Font(Font.FontFamily.HELVETICA, 10);
+    Font boldItalicFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD | Font.ITALIC);
 
     public byte[] generatePDF(ResumeRequest resumeData) {
         // code to generate PDF
@@ -31,8 +35,8 @@ public class PDFGeneratorService {
             document.open();
             addHeaders(document, resumeData);
             addSummary(document, resumeData);
-            addEducation(document, resumeData);
-            addWorkExperience(document, resumeData);
+            addEducationTable(document, resumeData);
+            addWorkExperienceTable(document, resumeData);
             addSkills(document, resumeData);
             document.close();
 
@@ -55,7 +59,7 @@ public class PDFGeneratorService {
         // Contact Information
         Paragraph contactInfo = new Paragraph(resumeData.getContact().getEmail() + " | "
                 + resumeData.getContact().getPhone() + " | "
-                + resumeData.getContact().getAddress());
+                + resumeData.getContact().getAddress(), basicFont);
         contactInfo.setAlignment(Element.ALIGN_CENTER);
         document.add(contactInfo);
         document.add(new Paragraph("\n"));
@@ -68,7 +72,7 @@ public class PDFGeneratorService {
         document.add(summaryHeader);
         addHtmlContentWithCss(document, HR, null);
         addNewLine(-10, document);
-        Paragraph summary = new Paragraph(resumeData.getContact().getSummary());
+        Paragraph summary = new Paragraph(resumeData.getContact().getSummary(), basicFont);
         document.add(summary);
         document.add(new Paragraph("\n"));
     }
@@ -82,12 +86,58 @@ public class PDFGeneratorService {
         addNewLine(-10, document);
 
         for (Education edu : resumeData.getEducation()) {
-            Paragraph degree = new Paragraph(edu.getDegree(), boldFont);
+            Paragraph degree = new Paragraph(edu.getDegree(), basicFont);
             Paragraph university = new Paragraph(edu.getUniversity(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12));
             document.add(university);
             document.add(degree);
+
+            addNewLine(5, document);
         }
-        document.add(new Paragraph("\n"));
+        addNewLine(5, document);
+    }
+
+    private void addEducationTable(Document document, ResumeRequest resumeData) throws DocumentException {
+        Paragraph education = new Paragraph("Education", boldFont);
+        education.setAlignment(Element.ALIGN_CENTER);
+        document.add(education);
+        addHtmlContentWithCss(document, HR, null);
+
+        addNewLine(-10, document);
+
+        for (Education edu : resumeData.getEducation()) {
+            PdfPTable table = new PdfPTable(2);
+            table.setWidthPercentage(100);
+            //table.setSpacingBefore(10f);
+            table.setSpacingAfter(5f);
+            table.setWidths(new int[]{7, 3});
+
+            PdfPCell leftCell = new PdfPCell();
+            leftCell.setBorder(Rectangle.NO_BORDER);
+            leftCell.addElement(new Paragraph(edu.getUniversity(), boldFont));
+            leftCell.addElement(new Paragraph(edu.getDegree(), basicFont));
+
+
+            PdfPCell rightCell = getRightCell(edu);
+
+            table.addCell(leftCell);
+            table.addCell(rightCell);
+
+            document.add(table);
+            //addNewLine(5, document);
+        }
+        addNewLine(5, document);
+    }
+
+    private PdfPCell getRightCell(Education edu) {
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.NO_BORDER);
+        Paragraph location = new Paragraph(edu.getLocation(), basicFont);
+        location.setAlignment(Element.ALIGN_RIGHT);
+        rightCell.addElement(location); // Replace with actual location
+        Paragraph eduDate = new Paragraph(edu.getDate(), basicFont);
+        eduDate.setAlignment(Element.ALIGN_RIGHT);
+        rightCell.addElement(eduDate); // Replace with actual date
+        return rightCell;
     }
 
     private void addWorkExperience(Document document, ResumeRequest resumeData) throws DocumentException {
@@ -99,12 +149,51 @@ public class PDFGeneratorService {
         addNewLine(-10, document);
 
         for (WorkExperience work : resumeData.getWorkExperience()) {
-            Paragraph company = new Paragraph(work.getCompany(), FontFactory.getFont(FontFactory.HELVETICA, 12, Font.BOLD));
-            Paragraph title = new Paragraph(work.getTitle(), FontFactory.getFont(FontFactory.HELVETICA, 12, Font.BOLDITALIC));
+            Paragraph company = new Paragraph(work.getCompany(), boldFont);
+            Paragraph title = new Paragraph(work.getTitle(), boldItalicFont);
             document.add(company);
             document.add(title);
             addUnOrderedList(document, work.getPoints());
 
+            addNewLine(5, document);
+        }
+
+        document.add(new Paragraph("\n"));
+    }
+
+    private void addWorkExperienceTable(Document document, ResumeRequest resumeData) throws DocumentException {
+        Paragraph workExperience = new Paragraph("Work Experience", boldFont);
+        workExperience.setAlignment(Element.ALIGN_CENTER);
+        document.add(workExperience);
+        addHtmlContentWithCss(document, HR, null);
+        addNewLine(-10, document);
+
+        for (WorkExperience work : resumeData.getWorkExperience()) {
+            PdfPTable table = new PdfPTable(2);
+            table.setWidthPercentage(100);
+            table.setSpacingAfter(5f);
+            table.setWidths(new int[]{7, 3});
+
+            PdfPCell leftCell = new PdfPCell();
+            leftCell.setBorder(Rectangle.NO_BORDER);
+            leftCell.addElement(new Paragraph(work.getCompany(), boldFont));
+            leftCell.addElement(new Paragraph(work.getTitle(), boldItalicFont));
+
+            PdfPCell rightCell = new PdfPCell();
+            rightCell.setBorder(Rectangle.NO_BORDER);
+            Paragraph location = new Paragraph(work.getLocation(), basicFont);
+            location.setAlignment(Element.ALIGN_RIGHT);
+            rightCell.addElement(location);
+            Paragraph workDate = new Paragraph(work.getDate(), basicFont);
+            workDate.setAlignment(Element.ALIGN_RIGHT);
+            rightCell.addElement(workDate);
+
+            table.addCell(leftCell);
+            table.addCell(rightCell);
+
+            document.add(table);
+            addNewLine(-8, document);
+            addUnOrderedList(document, work.getPoints());
             addNewLine(5, document);
         }
 
@@ -123,11 +212,11 @@ public class PDFGeneratorService {
 
         //adding every skill category and its skills
         for (Map.Entry<String, java.util.List<String>> entry : skillsList.entrySet()) {
-            Chunk skillCategory = new Chunk(entry.getKey() + ": ", boldUnderlineFont);
+            Chunk skillCategory = new Chunk(entry.getKey() + ": ", boldFont);
             document.add(skillCategory);
 
             String joined = String.join(", ", entry.getValue());
-            document.add(new Chunk(joined));
+            document.add(new Chunk(joined, basicFont));
             addNewLine(10, document);
         }
 
@@ -143,9 +232,9 @@ public class PDFGeneratorService {
     private void addUnOrderedList(Document document, String[] items) throws DocumentException {
         // code to add unordered list
        List list = new List(List.UNORDERED);
-       list.setListSymbol(new Chunk("• ", boldFont));
+       list.setListSymbol(new Chunk("• ", FontFactory.getFont(FontFactory.HELVETICA, 14)));
         for (String item : items) {
-            list.add(new ListItem(item));
+            list.add(new ListItem(item, basicFont));
         }
         document.add(list);
     }
@@ -168,7 +257,7 @@ public class PDFGeneratorService {
     /**
      * Add the html content to the document
      */
-    private void addHtmlContent(PdfWriter pdfWriter, Document document, String htmlContent) throws DocumentException, IOException {
+    private void addHtmlContent(PdfWriter pdfWriter, Document document, String htmlContent) throws IOException {
         XMLWorkerHelper.getInstance().parseXHtml(pdfWriter, document, new StringReader(htmlContent));
     }
 
